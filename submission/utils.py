@@ -440,14 +440,63 @@ def apply_decomposition(series, original_components, method, title='', period=1)
     }
 
 # Exercise week6 functions
-def plot_ets(synthetic_df1, synthetic_df2, period = [], trend="add", seasonal="add", residual="add", freq="D", title: str = '', nsimulations=8 ) -> None:
-    fit1 = ExponentialSmoothing(synthetic_df1, seasonal_periods=period[0], trend=trend, seasonal=seasonal, initialization_method="estimated",
-                                freq=freq).fit()
-    simulations1 = fit1.simulate(nsimulations, repetitions=100, error=residual)
+def plot_ets(
+    synthetic_df1,
+    synthetic_df2,
+    nsimulations=8,
+    period=None,
+    trend="add",
+    seasonal="add",
+    residual="add",
+    freq="D",
+    title: str = "",
+    damped_trend=False,
+    use_boxcox=(False, False),
+):
+    if period is None or len(period) != 2:
+        raise ValueError("period must be a list or tuple of length 2")
 
-    fit2 = ExponentialSmoothing(synthetic_df2, seasonal_periods=period[1], trend=trend, seasonal=seasonal, initialization_method="estimated",
-                                freq=freq).fit()
-    simulations2 = fit2.simulate(nsimulations, repetitions=100, error=residual)
+    # Only enforce positivity if multiplicative components are used
+    if trend == "mul" or seasonal == "mul":
+        eps = 1e-6
+
+        if synthetic_df1.min() <= 0:
+            synthetic_df1 = synthetic_df1 - synthetic_df1.min() + eps
+
+        if synthetic_df2.min() <= 0:
+            synthetic_df2 = synthetic_df2 - synthetic_df2.min() + eps
+
+    # Fit first series
+    fit1 = ExponentialSmoothing(
+        synthetic_df1,
+        seasonal_periods=period[0],
+        trend=trend,
+        damped_trend=damped_trend,
+        seasonal=seasonal,
+        initialization_method="estimated",
+        use_boxcox=use_boxcox[0],
+        freq=freq,
+    ).fit()
+
+    simulations1 = fit1.simulate(
+        nsimulations, repetitions=100, error=residual
+    )
+
+    # Fit second series
+    fit2 = ExponentialSmoothing(
+        synthetic_df2,
+        seasonal_periods=period[1],
+        trend=trend,
+        damped_trend=damped_trend,
+        seasonal=seasonal,
+        initialization_method="estimated",
+        use_boxcox=use_boxcox[1],
+        freq=freq,
+    ).fit()
+
+    simulations2 = fit2.simulate(
+        nsimulations, repetitions=100, error=residual
+    )
 
     # plotting
     fig, (ax1, ax2) = plt.subplots(2, figsize=(14, 10))
@@ -511,3 +560,5 @@ def plot_ets(synthetic_df1, synthetic_df2, period = [], trend="add", seasonal="a
 
     plt.tight_layout()
     plt.show()
+
+    return fit1.aic, fit2.aic
