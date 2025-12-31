@@ -17,5 +17,6 @@ def get_power_consumption() -> pd.DataFrame:
 	df = df.loc[:, ('timestamp_interval_start', 'stromverbrauch_kwh')]
 	df.rename(columns={'stromverbrauch_kwh': 'consumptions(kWh)', 'timestamp_interval_start': 'time'}, inplace=True)
 	df['time'] = pd.to_datetime(df['time'])
-	df = df.set_index('time')
+	df = df.set_index('time').sort_index()
+	df = df.asfreq("15min")
 	return df
